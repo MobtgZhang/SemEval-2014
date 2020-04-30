@@ -17,7 +17,7 @@ from model import Vocab
 from model import Metrics
 from model import build_vocab
 from trainer import Trainer
-
+from draw import draw
 logging.basicConfig(level=logging.DEBUG,format='%(asctime)s - %(pathname)s[line:%(lineno)d] - %(levelname)s: %(message)s')
 def main():
     args = parse_args()
@@ -117,6 +117,9 @@ def main():
     # create trainer object for training and testing
     trainer = Trainer(args, model, criterion, optimizer, device)
     best = -float('inf')
+    peason_list = []
+    mse_list = []
+    loss_list = []
     for epoch in range(args.epochs):
         train_loss = trainer.train(train_set)
         train_loss, train_pred,train_target = trainer.test(train_set)
@@ -124,13 +127,18 @@ def main():
         test_loss, test_pred ,test_target= trainer.test(test_set)
         train_pearson = metrics.pearson(train_pred, train_target)
         train_mse = metrics.mse(train_pred,train_target)
-        logger.info('==> Epoch {}, Train \tLoss: {}\tPearson: {}\tMSE: {}'.format(epoch, train_loss, train_pearson, train_mse))
+        logger.info('==> Epoch {}, Train \tLoss: {}\tPearson: {}\tMSE: {}'.format(epoch+1, train_loss, train_pearson, train_mse))
         dev_pearson = metrics.pearson(dev_pred, dev_target)
         dev_mse = metrics.mse(dev_pred, dev_target)
-        logger.info('==> Epoch {}, Dev \tLoss: {}\tPearson: {}\tMSE: {}'.format(epoch, dev_loss, dev_pearson, dev_mse))
+        logger.info('==> Epoch {}, Dev \tLoss: {}\tPearson: {}\tMSE: {}'.format(epoch+1, dev_loss, dev_pearson, dev_mse))
         test_pearson = metrics.pearson(test_pred,test_target)
         test_mse = metrics.mse(test_pred,test_target)
-        logger.info('==> Epoch {}, Test \tLoss: {}\tPearson: {}\tMSE: {}'.format(epoch, test_loss, test_pearson, test_mse))
+        logger.info('==> Epoch {}, Test \tLoss: {}\tPearson: {}\tMSE: {}'.format(epoch+1, test_loss, test_pearson, test_mse))
+
+        # drawing data
+        peason_list.append((train_pearson,dev_pearson,test_pearson))
+        mse_list.append((train_mse,dev_mse,test_mse))
+        loss_list.append((train_loss,dev_loss,test_loss))
         if best < test_pearson:
             best = test_pearson
             checkpoint = {
@@ -141,5 +149,9 @@ def main():
             }
             logger.info('==> New optimum found, checkpointing everything now...')
             torch.save(checkpoint, '%s.pt' % os.path.join(args.logdir, model.name))
+    # draw the picture
+    draw(peason_list,"Peason value","peason",model_name,args.logdir)
+    draw(mse_list,"MSE value","mse",model_name,args.logdir)
+    draw(loss_list,"Loss value","loss",model_name,args.logdir)
 if __name__ == '__main__':
     main()
