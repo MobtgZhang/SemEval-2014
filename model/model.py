@@ -18,7 +18,10 @@ class Similarity(nn.Module):
         abs_dist = torch.abs(torch.add(lvec,-rvec))
         vec_dist = torch.cat((mult_dist,abs_dist),dim=2)
         out = torch.sigmoid(self.wh(self.mlp(vec_dist.transpose(1,2)).squeeze()))
-        out = F.softmax(self.wp(out),dim=1)
+        if out.dim() == 1:
+            out = F.log_softmax(self.wp(out),dim=0)
+        else:
+            out = F.log_softmax(self.wp(out),dim=1)
         return out
 class RNNSimilarity(nn.Module):
     def __init__(self,vocab_size,embedding_dim,mem_dim,hid_dim,num_layers,rnn_type,

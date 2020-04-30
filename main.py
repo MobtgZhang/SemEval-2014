@@ -10,12 +10,12 @@ import torch.optim as optim
 from config import parse_args
 from download import download_sick,download_wordvecs
 from model import SICKDataset
-from utils import load_word_vectors
+from model import load_word_vectors
 from model import RNNSimilarity
 from model import Constants
 from model import Vocab
 from model import Metrics
-from utils import build_vocab
+from model import build_vocab
 from trainer import Trainer
 
 logging.basicConfig(level=logging.DEBUG,format='%(asctime)s - %(pathname)s[line:%(lineno)d] - %(levelname)s: %(message)s')
@@ -59,11 +59,11 @@ def main():
                        data=[Constants.PAD_WORD, Constants.UNK_WORD,Constants.BOS_WORD, Constants.EOS_WORD])
     logger.info('==> SICK vocabulary size : %d ' % vocabulary.size())
     # preparing dataset
-    train_set = SICKDataset(vocabulary,args.seq_len,os.path.join(args.datadir,"SICK_train.txt"))
+    train_set = SICKDataset(vocabulary,args.seq_len,args.num_classes,os.path.join(args.datadir,"SICK_train.txt"))
     logger.info('==> Size of train data   : %d ' % len(train_set))
-    dev_set = SICKDataset(vocabulary,args.seq_len,os.path.join(args.datadir, "SICK_trial.txt"))
+    dev_set = SICKDataset(vocabulary,args.seq_len,args.num_classes,os.path.join(args.datadir, "SICK_trial.txt"))
     logger.info('==> Size of dev data   : %d ' % len(dev_set))
-    test_set = SICKDataset(vocabulary,args.seq_len,os.path.join(args.datadir, "SICK_test_annotated.txt"))
+    test_set = SICKDataset(vocabulary,args.seq_len,args.num_classes,os.path.join(args.datadir, "SICK_test_annotated.txt"))
     logger.info('==> Size of test data   : %d ' % len(test_set))
 
     # preparing model
@@ -119,33 +119,18 @@ def main():
     best = -float('inf')
     for epoch in range(args.epochs):
         train_loss = trainer.train(train_set)
-        exit()
-        train_loss, train_pred = trainer.test(train_dataset)
-        dev_loss, dev_pred = trainer.test(dev_dataset)
-        test_loss, test_pred = trainer.test(test_dataset)
-
-
-
-        train_pearson = metrics.pearson(train_pred, train_dataset.labels)
-        train_mse = metrics.mse(train_pred, train_dataset.labels)
+        train_loss, train_pred,train_target = trainer.test(train_set)
+        dev_loss, dev_pred ,dev_target= trainer.test(dev_set)
+        test_loss, test_pred ,test_target= trainer.test(test_set)
+        train_pearson = metrics.pearson(train_pred, train_target)
+        train_mse = metrics.mse(train_pred,train_target)
         logger.info('==> Epoch {}, Train \tLoss: {}\tPearson: {}\tMSE: {}'.format(epoch, train_loss, train_pearson, train_mse))
-        dev_pearson = metrics.pearson(dev_pred, dev_dataset.labels)
-        dev_mse = metrics.mse(dev_pred, dev_dataset.labels)
+        dev_pearson = metrics.pearson(dev_pred, dev_target)
+        dev_mse = metrics.mse(dev_pred, dev_target)
         logger.info('==> Epoch {}, Dev \tLoss: {}\tPearson: {}\tMSE: {}'.format(epoch, dev_loss, dev_pearson, dev_mse))
-        test_pearson = metrics.pearson(test_pred, test_dataset.labels)
-        test_mse = metrics.mse(test_pred, test_dataset.labels)
+        test_pearson = metrics.pearson(test_pred,test_target)
+        test_mse = metrics.mse(test_pred,test_target)
         logger.info('==> Epoch {}, Test \tLoss: {}\tPearson: {}\tMSE: {}'.format(epoch, test_loss, test_pearson, test_mse))
-
-
-
-
-
-
-
-
-
-
-
         if best < test_pearson:
             best = test_pearson
             checkpoint = {
