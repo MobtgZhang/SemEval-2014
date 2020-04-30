@@ -1,4 +1,5 @@
 import os
+import math
 import torch
 from model import Vocab
 # write unique words from a set of files to a new file
@@ -44,3 +45,14 @@ def load_word_vectors(path):
     vocab = Vocab(filename=path + '.vocab')
     torch.save(vectors, path + '.pth')
     return vocab, vectors
+# mapping from scalar to vector
+def map_label_to_target(label, num_classes):
+    target = torch.zeros(1, num_classes, dtype=torch.float, device='cpu')
+    ceil = int(math.ceil(label))
+    floor = int(math.floor(label))
+    if ceil == floor:
+        target[0, floor-1] = 1
+    else:
+        target[0, floor-1] = ceil - label
+        target[0, ceil-1] = label - floor
+    return target

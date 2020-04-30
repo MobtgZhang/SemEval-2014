@@ -14,7 +14,9 @@ from utils import load_word_vectors
 from model import RNNSimilarity
 from model import Constants
 from model import Vocab
+from model import Metrics
 from utils import build_vocab
+from trainer import Trainer
 
 logging.basicConfig(level=logging.DEBUG,format='%(asctime)s - %(pathname)s[line:%(lineno)d] - %(levelname)s: %(message)s')
 def main():
@@ -47,22 +49,23 @@ def main():
     # download dataset
     download_sick(args.datadir)
     download_wordvecs(args.glove)
-    # preparing dataset
-    train_set = SICKDataset(os.path.join(args.datadir,"SICK_train.txt"))
-    logger.info('==> Size of train data   : %d ' % len(train_set))
-    dev_set = SICKDataset(os.path.join(args.datadir, "SICK_trial.txt"))
-    logger.info('==> Size of dev data   : %d ' % len(dev_set))
-    test_set = SICKDataset(os.path.join(args.datadir, "SICK_test_annotated.txt"))
-    logger.info('==> Size of test data   : %d ' % len(test_set))
     # build vocabulary
     filenames = [os.path.join(args.datadir, "SICK_train.txt"),
                  os.path.join(args.datadir, "SICK_trial.txt"),
                  os.path.join(args.datadir, "SICK_test_annotated.txt")]
-    build_vocab(filenames,os.path.join(args.datadir,"vocab.txt"))
+    build_vocab(filenames, os.path.join(args.datadir, "vocab.txt"))
     # preparing vocabulary
-    vocabulary = Vocab(filename=os.path.join(args.datadir,"vocab.txt"),
-                       data=[Constants.PAD_WORD,Constants.BOS_WORD,Constants.EOS_WORD,Constants.UNK_WORD])
+    vocabulary = Vocab(filename=os.path.join(args.datadir, "vocab.txt"),
+                       data=[Constants.PAD_WORD, Constants.UNK_WORD,Constants.BOS_WORD, Constants.EOS_WORD])
     logger.info('==> SICK vocabulary size : %d ' % vocabulary.size())
+    # preparing dataset
+    train_set = SICKDataset(vocabulary,args.seq_len,os.path.join(args.datadir,"SICK_train.txt"))
+    logger.info('==> Size of train data   : %d ' % len(train_set))
+    dev_set = SICKDataset(vocabulary,args.seq_len,os.path.join(args.datadir, "SICK_trial.txt"))
+    logger.info('==> Size of dev data   : %d ' % len(dev_set))
+    test_set = SICKDataset(vocabulary,args.seq_len,os.path.join(args.datadir, "SICK_test_annotated.txt"))
+    logger.info('==> Size of test data   : %d ' % len(test_set))
+
     # preparing model
     model = RNNSimilarity(vocab_size=vocabulary.size(),
                           embedding_dim=args.embedding_dim,
@@ -108,6 +111,50 @@ def main():
         optimizer = optim.Adagrad(filter(lambda p: p.requires_grad,model.parameters()), lr=args.lr, weight_decay=args.wd)
     elif args.optim == 'sgd':
         optimizer = optim.SGD(filter(lambda p: p.requires_grad,model.parameters()), lr=args.lr, weight_decay=args.wd)
+    else:
+        raise TypeError("Unknown optimizer type %s"%str(args.optim))
+    metrics = Metrics(args.num_classes)
+    # create trainer object for training and testing
+    trainer = Trainer(args, model, criterion, optimizer, device)
+    best = -float('inf')
+    for epoch in range(args.epochs):
+        train_loss = trainer.train(train_set)
+        exit()
+        train_loss, train_pred = trainer.test(train_dataset)
+        dev_loss, dev_pred = trainer.test(dev_dataset)
+        test_loss, test_pred = trainer.test(test_dataset)
 
+
+
+        train_pearson = metrics.pearson(train_pred, train_dataset.labels)
+        train_mse = metrics.mse(train_pred, train_dataset.labels)
+        logger.info('==> Epoch {}, Train \tLoss: {}\tPearson: {}\tMSE: {}'.format(epoch, train_loss, train_pearson, train_mse))
+        dev_pearson = metrics.pearson(dev_pred, dev_dataset.labels)
+        dev_mse = metrics.mse(dev_pred, dev_dataset.labels)
+        logger.info('==> Epoch {}, Dev \tLoss: {}\tPearson: {}\tMSE: {}'.format(epoch, dev_loss, dev_pearson, dev_mse))
+        test_pearson = metrics.pearson(test_pred, test_dataset.labels)
+        test_mse = metrics.mse(test_pred, test_dataset.labels)
+        logger.info('==> Epoch {}, Test \tLoss: {}\tPearson: {}\tMSE: {}'.format(epoch, test_loss, test_pearson, test_mse))
+
+
+
+
+
+
+
+
+
+
+
+        if best < test_pearson:
+            best = test_pearson
+            checkpoint = {
+                'model': trainer.model.state_dict(),
+                'optim': trainer.optimizer,
+                'pearson': test_pearson, 'mse': test_mse,
+                'args': args, 'epoch': epoch
+            }
+            logger.info('==> New optimum found, checkpointing everything now...')
+            torch.save(checkpoint, '%s.pt' % os.path.join(args.logdir, model.name))
 if __name__ == '__main__':
     main()

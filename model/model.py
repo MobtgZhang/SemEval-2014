@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from .Constants import PAD
+from .Constants import Constants
 class Similarity(nn.Module):
     def __init__(self,mem_dim,hidden_dim,seq_len,num_classes):
         super(Similarity,self).__init__()
@@ -35,7 +35,7 @@ class RNNSimilarity(nn.Module):
         self.name = name
 
         # word embedding_dim
-        self.word_emb = nn.Embedding(vocab_size,embedding_dim,padding_idx=PAD,sparse=sparsity)
+        self.word_emb = nn.Embedding(vocab_size,embedding_dim,padding_idx=Constants.PAD,sparse=sparsity)
         if freeze:
             self.word_emb.weight.requires_grad = False
         # RNN layers

@@ -7,6 +7,7 @@ def parse_args():
     parser.add_argument('--glove', default='F:\\natural language processing toolkit\glove\\',help='directory with GLOVE embeddings')
     parser.add_argument('--logdir', default='log',help='path to log files')
     # model arguments
+    parser.add_argument('--data-workers', type=int, default=5,help='Number of subprocesses for data loading')
     parser.add_argument('--embedding_dim', default=300, type=int,help='Size of input word vector')
     parser.add_argument('--mem_dim', default=150, type=int,help='Size of RNNs mem dim')
     parser.add_argument('--hid_dim', default=50, type=int,help='Size of classifier MLP')
@@ -19,7 +20,7 @@ def parse_args():
     parser.add_argument('--freeze_embed', action='store_true',help='Freeze word embeddings')
     # training arguments
     parser.add_argument('--epochs', default=15, type=int,help='number of total epochs to run')
-    parser.add_argument('--batchsize', default=25, type=int,help='batchsize for optimizer updates')
+    parser.add_argument('--batch_size', default=25, type=int,help='batch_size for optimizer updates')
     parser.add_argument('--lr', default=0.01, type=float,metavar='LR', help='initial learning rate')
     parser.add_argument('--wd', default=1e-4, type=float,help='weight decay (default: 1e-4)')
     parser.add_argument('--sparse', action='store_true',help='Enable sparsity for embeddings,incompatible with weight decay')
